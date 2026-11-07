@@ -2,6 +2,28 @@ extends Node3D
 # Avtodrom Godot v3 — Kyzylorda free ride + EXAM autodrom (13 exercises, own geometry).
 # Standard public exam elements; no third-party models copied. Car/Spectral GLB CC0.
 
+class WheelCtl:
+	extends Control
+	var steer := 0.0
+	func _draw() -> void:
+		var c := size * 0.5
+		var r := minf(size.x, size.y) * 0.42
+		draw_circle(c, r + 9.0, Color(0.05, 0.07, 0.1, 0.55))
+		draw_arc(c, r, 0.0, TAU, 64, Color(0.85, 0.87, 0.92, 0.95), 12.0, true)
+		draw_arc(c, r - 14.0, 0.0, TAU, 64, Color(0.4, 0.45, 0.52, 0.9), 3.0, true)
+		var a := steer * 1.8
+		for k in range(3):
+			var ang := a + float(k) * TAU / 3.0
+			var from := c + Vector2(0.0, -1.0).rotated(ang) * 18.0
+			var to := c + Vector2(0.0, -1.0).rotated(ang) * (r - 4.0)
+			draw_line(from, to, Color(0.35, 0.4, 0.47, 0.95), 10.0, true)
+		draw_circle(c, 24.0, Color(0.88, 0.9, 0.93, 0.98))
+		draw_arc(c, 24.0, 0.0, TAU, 32, Color(0.2, 0.24, 0.3, 0.9), 2.5, true)
+
+var wheel: WheelCtl
+var wheel_drag := false
+var keys := {"left": false, "right": false}
+
 const TOTAL_LAPS := 3
 const TOP_SPEED := 33.0
 const GEARS := {"R": 8.0, "N": 0.0, "1": 14.0, "2": 22.0, "3": 29.0, "4": 36.0, "5": 42.0}
@@ -472,14 +494,13 @@ func _build_hud() -> void:
 	toast_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	toast_label.add_theme_font_size_override("font_size", 20)
 	layer.add_child(toast_label)
-	_abtn(layer, "◀", Control.PRESET_BOTTOM_LEFT, 16, -196, 102, -110, _steer_set.bind(-1.0), _steer_clear.bind(-1.0))
-	_abtn(layer, "▶", Control.PRESET_BOTTOM_LEFT, 112, -196, 198, -110, _steer_set.bind(1.0), _steer_clear.bind(1.0))
-	_abtn(layer, "СТОП", Control.PRESET_BOTTOM_RIGHT, -190, -140, -110, -40, func() -> void: touch_brake = true, func() -> void: touch_brake = false)
-	_abtn(layer, "ГО", Control.PRESET_BOTTOM_RIGHT, -100, -160, -10, -40, func() -> void: touch_gas = true, func() -> void: touch_gas = false)
-	_abtn(layer, "РУЧНИК", Control.PRESET_BOTTOM_RIGHT, -200, -290, -110, -230, func() -> void: touch_hand = true, func() -> void: touch_hand = false)
+	_build_wheel(layer)
+	_pedal(layer, "▲\nГО", Control.PRESET_BOTTOM_RIGHT, -100, -160, -10, -40, Color(0.12, 0.55, 0.25), func() -> void: touch_gas = true, func() -> void: touch_gas = false)
+	_pedal(layer, "■\nСТОП", Control.PRESET_BOTTOM_RIGHT, -190, -140, -110, -40, Color(0.62, 0.16, 0.13), func() -> void: touch_brake = true, func() -> void: touch_brake = false)
+	_pedal(layer, "P\nРУЧНИК", Control.PRESET_BOTTOM_RIGHT, -110, -360, -20, -300, Color(0.2, 0.24, 0.3), func() -> void: touch_hand = true, func() -> void: touch_hand = false)
 	var gr := HBoxContainer.new()
 	gr.set_anchors_preset(Control.PRESET_BOTTOM_LEFT)
-	gr.position = Vector2(210, -120)
+	gr.position = Vector2(210, -60)
 	layer.add_child(gr)
 	for g in ["R", "N", "1", "2", "3", "4", "5"]:
 		var b := Button.new()
@@ -509,12 +530,66 @@ func _abtn(parent: Node, text: String, preset: int, l: float, t: float, r: float
 	parent.add_child(btn)
 	return btn
 
-func _steer_set(v: float) -> void:
-	touch_steer = v
+func _build_wheel(layer: CanvasLayer) -> void:
+	wheel = WheelCtl.new()
+	wheel.custom_minimum_size = Vector2(168, 168)
+	wheel.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_LEFT)
+	wheel.offset_left = 16
+	wheel.offset_top = -196
+	wheel.offset_right = 184
+	wheel.offset_bottom = -28
+	wheel.mouse_filter = Control.MOUSE_FILTER_STOP
+	wheel.gui_input.connect(_on_wheel_input)
+	layer.add_child(wheel)
 
-func _steer_clear(v: float) -> void:
-	if touch_steer == v:
-		touch_steer = 0.0
+func _on_wheel_input(event: InputEvent) -> void:
+	if event is InputEventMouseButton and (event as InputEventMouseButton).button_index == MOUSE_BUTTON_LEFT:
+		wheel_drag = (event as InputEventMouseButton).pressed
+		if wheel_drag:
+			_wheel_drag_to()
+	if wheel_drag and (event is InputEventMouseMotion or event is InputEventScreenDrag):
+		_wheel_drag_to()
+	if event is InputEventMouseButton and not (event as InputEventMouseButton).pressed:
+		wheel_drag = false
+		if not keys["left"] and not keys["right"]:
+			touch_steer = 0.0
+			wheel.steer = 0.0
+
+func _wheel_drag_to() -> void:
+	var lp := wheel.get_local_mouse_position()
+	var d := lp - wheel.size * 0.5
+	var ang := atan2(d.x, -d.y)
+	touch_steer = clampf(ang / 1.9, -1.0, 1.0)
+	wheel.steer = touch_steer
+
+func _pedal(parent: Node, text: String, preset: int, l: float, t: float, r: float, b: float, col: Color, down: Callable, up: Callable) -> Button:
+	var btn := Button.new()
+	btn.text = text
+	btn.set_anchors_and_offsets_preset(preset)
+	btn.offset_left = l
+	btn.offset_top = t
+	btn.offset_right = r
+	btn.offset_bottom = b
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = col
+	sb.corner_radius_top_left = 18
+	sb.corner_radius_top_right = 18
+	sb.corner_radius_bottom_left = 18
+	sb.corner_radius_bottom_right = 18
+	sb.border_width_left = 2
+	sb.border_width_top = 2
+	sb.border_width_right = 2
+	sb.border_width_bottom = 4
+	sb.border_color = Color(1, 1, 1, 0.35)
+	btn.add_theme_stylebox_override("normal", sb)
+	var sb2 := sb.duplicate() as StyleBoxFlat
+	sb2.bg_color = col.darkened(0.35)
+	btn.add_theme_stylebox_override("pressed", sb2)
+	btn.add_theme_font_size_override("font_size", 20)
+	btn.button_down.connect(down)
+	btn.button_up.connect(up)
+	parent.add_child(btn)
+	return btn
 
 func _set_gear(g: String) -> void:
 	gear = g
@@ -536,9 +611,9 @@ func _build_gear_gate(layer: CanvasLayer) -> void:
 	gate = Control.new()
 	gate.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_RIGHT)
 	gate.offset_left = -220
-	gate.offset_top = -350
+	gate.offset_top = -295
 	gate.offset_right = -40
-	gate.offset_bottom = -200
+	gate.offset_bottom = -175
 	layer.add_child(gate)
 	var bg := ColorRect.new()
 	bg.color = Color(0.08, 0.1, 0.14, 0.85)
@@ -620,11 +695,11 @@ func _build_menus() -> void:
 	v.add_child(sub)
 	var b_free := Button.new()
 	b_free.text = "🏁 Гонка — город + кольцо (3 круга)"
-	b_free.pressed.connect(func() -> void: _choose_mode.bind(true))
+	b_free.pressed.connect(_choose_mode.bind(true))
 	v.add_child(b_free)
 	var b_exam := Button.new()
 	b_exam.text = "🎓 Экзамен — полигон (13 заданий)"
-	b_exam.pressed.connect(func() -> void: _choose_mode.bind(false))
+	b_exam.pressed.connect(_choose_mode.bind(false))
 	v.add_child(b_exam)
 	# prep overlay on its own layer (must stay visible after menu hides)
 	prep_layer = CanvasLayer.new()
@@ -735,9 +810,12 @@ func _physics_process(delta: float) -> void:
 	if mode != "race" or car == null:
 		return
 	race_t += delta
-	var steer := Input.get_axis("steer_left", "steer_right")
+	var steer := 0.0
+	var steer_min := Input.get_axis("steer_left", "steer_right")
 	if absf(touch_steer) > 0.01:
 		steer = touch_steer
+	else:
+		steer = steer_min
 	steer = clampf(steer, -1.0, 1.0)
 	var spd := car.linear_velocity.length()
 	var steer_max := 0.55 / (1.0 + spd * 0.02)
@@ -786,6 +864,10 @@ func _physics_process(delta: float) -> void:
 			toast_label.text = ""
 
 func _process(delta: float) -> void:
+	if wheel != null and not wheel_drag:
+		wheel.steer = move_toward(wheel.steer, Input.get_axis("steer_left", "steer_right"), delta * 6.0)
+		if wheel.steer != touch_steer and absf(touch_steer) < 0.01:
+			touch_steer = wheel.steer
 	if knob != null and knob_anim < 1.0:
 		knob_anim = minf(1.0, knob_anim + delta / 0.12)
 		knob.position = knob_from.lerp(knob_to, knob_anim)
