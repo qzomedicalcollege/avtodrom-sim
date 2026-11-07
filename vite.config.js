@@ -11,7 +11,7 @@ export default defineConfig({
     rollupOptions: {
       input: {
         main: 'index.html',
-        game3d: 'index3d.html',
+        game2d: 'index2d.html',
       },
     },
   },

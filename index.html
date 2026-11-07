@@ -4,79 +4,107 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
 <meta name="theme-color" content="#0b0e14" />
-<title>Автодром — Симулятор</title>
+<title>Автодром 3D — Кызылорда</title>
 <style>
   *{margin:0;padding:0;box-sizing:border-box}
   html,body{width:100%;height:100%;overflow:hidden;background:#0b0e14;color:#fff;font-family:system-ui,sans-serif;-webkit-user-select:none;user-select:none}
-  #app{position:fixed;inset:0;display:flex;flex-direction:column}
-  #hud{position:absolute;top:0;left:0;right:0;display:flex;justify-content:space-between;align-items:center;padding:10px 14px;gap:8px;pointer-events:none;z-index:5;background:linear-gradient(to bottom,rgba(0,0,0,.7),transparent)}
-  .pill{background:rgba(10,15,25,.75);border:1px solid rgba(255,255,255,.12);border-radius:999px;padding:6px 12px;font-size:13px;font-weight:600;letter-spacing:.3px;white-space:nowrap}
-  .pill b{color:#ffc933}
-  #wrap{position:relative;flex:1}
+  #app{position:fixed;inset:0}
   canvas{display:block;width:100%;height:100%;touch-action:none}
+  #hud{position:absolute;top:0;left:0;right:0;display:flex;justify-content:space-between;align-items:center;padding:10px 14px;gap:8px;pointer-events:none;z-index:5;background:linear-gradient(to bottom,rgba(0,0,0,.7),transparent)}
+  .pill{background:rgba(10,15,25,.75);border:1px solid rgba(255,255,255,.12);border-radius:999px;padding:6px 12px;font-size:13px;font-weight:600;white-space:nowrap}
+  .pill b{color:#ffc933}
+  .pill.red b{color:#ff6b6b}
+  #toast{position:absolute;top:60px;left:50%;transform:translateX(-50%);background:rgba(160,30,30,.92);border-radius:12px;padding:10px 16px;font-size:14px;font-weight:800;z-index:8;display:none;text-align:center}
   #controls{position:absolute;inset:0;pointer-events:none;z-index:6}
   .btn{position:absolute;pointer-events:auto;background:rgba(20,26,40,.78);border:1px solid rgba(255,255,255,.18);border-radius:18px;color:#fff;font-size:15px;font-weight:700;display:flex;align-items:center;justify-content:center;touch-action:none}
   .btn:active{background:rgba(50,65,95,.9)}
   #btnLeft{left:12px;bottom:86px;width:76px;height:76px;font-size:28px}
   #btnRight{left:100px;bottom:86px;width:76px;height:76px;font-size:28px}
-  #btnGas{right:12px;bottom:92px;width:84px;height:110px;background:rgba(25,110,45,.85);font-size:15px}
+  #btnGas{right:12px;bottom:92px;width:84px;height:110px;background:rgba(25,110,45,.85)}
   #btnBrake{right:108px;bottom:92px;width:76px;height:86px;background:rgba(140,30,30,.85);font-size:14px}
   #btnHand{right:12px;bottom:212px;width:84px;height:48px;font-size:13px}
   #topBtns{position:absolute;top:58px;right:12px;display:flex;gap:8px;pointer-events:auto}
   .sbtn{background:rgba(20,26,40,.8);border:1px solid rgba(255,255,255,.18);border-radius:10px;color:#fff;padding:8px 10px;font-size:12px;font-weight:700}
-  #menu{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;background:radial-gradient(ellipse at center,rgba(15,22,38,.92),rgba(5,8,15,.96));z-index:10;text-align:center;padding:20px}
-  #menu h1{font-size:34px;letter-spacing:1px;margin-bottom:6px}
-  #menu h1 span{color:#ffc933}
-  #menu p{opacity:.85;font-size:14px;max-width:420px;line-height:1.5;margin-bottom:18px}
-  #menu .row{display:flex;gap:10px;flex-wrap:wrap;justify-content:center}
+  .overlay{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;background:radial-gradient(ellipse at center,rgba(15,22,38,.94),rgba(5,8,15,.97));z-index:10;text-align:center;padding:20px}
+  .hidden{display:none!important}
+  .overlay h1{font-size:30px;letter-spacing:1px;margin-bottom:6px}
+  .overlay h1 span{color:#ffc933}
+  .overlay p{opacity:.85;font-size:14px;max-width:460px;line-height:1.5;margin-bottom:14px}
+  .card{background:rgba(20,26,40,.9);border:1px solid rgba(255,255,255,.15);border-radius:16px;padding:16px 20px;text-align:left;min-width:290px;max-width:92vw;margin-bottom:16px}
+  .card h2{font-size:16px;margin-bottom:10px;color:#ffc933}
+  .chk{display:flex;align-items:center;gap:10px;padding:8px 6px;font-size:15px;cursor:pointer;border-radius:10px}
+  .chk:active{background:rgba(255,255,255,.06)}
+  .chk input{width:20px;height:20px;accent-color:#ffc933}
+  .chk small{opacity:.6;margin-left:auto;font-size:12px}
+  .row{display:flex;gap:10px;flex-wrap:wrap;justify-content:center}
   .cta{background:#ffc933;color:#111;border:none;border-radius:999px;padding:13px 24px;font-size:16px;font-weight:800;cursor:pointer}
   .ghost{background:transparent;color:#fff;border:1px solid rgba(255,255,255,.25);border-radius:999px;padding:13px 20px;font-size:14px;font-weight:700;cursor:pointer}
-  #finish{position:absolute;inset:0;display:none;flex-direction:column;align-items:center;justify-content:center;background:rgba(5,8,15,.92);z-index:11;text-align:center;padding:20px}
-  #finish.show{display:flex}
-  #finish h2{font-size:30px;margin-bottom:10px;color:#ffc933}
+  #warn{background:rgba(160,90,0,.25);border:1px solid rgba(255,180,0,.4);border-radius:10px;padding:8px 12px;font-size:13px;margin-bottom:12px;min-width:290px;max-width:92vw}
+  #finish h2{color:#ffc933;font-size:30px;margin-bottom:10px}
   #hint{position:absolute;bottom:6px;left:0;right:0;text-align:center;font-size:11px;opacity:.6;pointer-events:none;z-index:7}
   @media (orientation:portrait){ #btnLeft{bottom:120px} #btnRight{bottom:120px} #btnGas{bottom:120px} #btnBrake{bottom:120px} #btnHand{bottom:240px} }
 </style>
 </head>
 <body>
 <div id="app">
-  <div id="wrap">
-    <div id="hud">
-      <div class="pill">Скорость <b id="spd">0</b> км/ч</div>
-      <div class="pill">Круг <b id="lap">1/3</b> · <b id="time">0:00.00</b></div>
-      <div class="pill">Рекорд <b id="best">--</b></div>
+  <div id="hud">
+    <div class="pill">Скорость <b id="spd">0</b> км/ч</div>
+    <div class="pill">Круг <b id="lap">1/3</b> · <b id="time">0:00.00</b></div>
+    <div class="pill red">+штраф <b id="pen">0</b>с</div>
+  </div>
+  <div id="toast">⚠ +5с</div>
+  <div id="controls">
+    <div class="btn" id="btnLeft">⬅</div>
+    <div class="btn" id="btnRight">➡</div>
+    <div class="btn" id="btnBrake">ТОРМОЗ</div>
+    <div class="btn" id="btnGas">ГАЗ</div>
+    <div class="btn" id="btnHand">РУЧНИК</div>
+    <div id="topBtns">
+      <button class="sbtn" id="btnCam">🎥 Камера</button>
+      <button class="sbtn" id="btnPause">⏸ Пауза</button>
+      <button class="sbtn" id="btnReset">⟲ Сброс</button>
     </div>
-    <div id="controls">
-      <div class="btn" id="btnLeft">⬅</div>
-      <div class="btn" id="btnRight">➡</div>
-      <div class="btn" id="btnBrake">ТОРМОЗ</div>
-      <div class="btn" id="btnGas">ГАЗ</div>
-      <div class="btn" id="btnHand">РУЧНИК</div>
-      <div id="topBtns">
-        <button class="sbtn" id="btnPause">⏸ Пауза</button>
-        <button class="sbtn" id="btnReset">⟲ Сброс</button>
-      </div>
-      <div id="hint">Стрелки / WASD — руль и газ · ПРОБЕЛ — ручник · Поверните телефон горизонтально</div>
+    <div id="hint">Стрелки / WASD — руль и газ · ПРОБЕЛ — ручник · С — камера</div>
+  </div>
+  <canvas id="game3d"></canvas>
+
+  <div class="overlay" id="menu">
+    <h1>АВТОДРОМ <span>3D</span> · Кызылорда</h1>
+    <p>3D симулятор: стилизованная карта Кызылорды (Сырдарья, Абай, Назарбаев, мосты) + кольцо автодрома за городом. 3 круга, штрафная система, сенсорное управление.</p>
+    <div class="row">
+      <button class="cta" id="btnToPrep">▶ К подготовке</button>
     </div>
-    <canvas id="game"></canvas>
-    <div id="menu">
-      <h1>АВТОДРОМ <span>SIM</span></h1>
-      <p>Трасса 1 · 3 круга · Сенсорное рулевое на экране.<br/>Следите за чекпоинтами — круг засчитывается только если проехать все секторы по порядку.</p>
-      <div class="row">
-        <button class="cta" id="btnStart">▶ Стартуем</button>
-        <button class="ghost" id="btnSound">🔊 Звук вкл</button>
-      </div>
+  </div>
+
+  <div class="overlay hidden" id="prep">
+    <h1>Пред-ездовая <span>подготовка</span></h1>
+    <div id="warn">Пропуск пункта = <b>+5с</b> штрафа (макс +20с за полный пропуск). Можно стартовать без подготовки — но штраф начислится.</div>
+    <div class="card">
+      <h2>Чек-лист перед выездом</h2>
+      <label class="chk"><input type="checkbox" data-k="belt"> Ремень пристёгнут <small>безопасность</small></label>
+      <label class="chk"><input type="checkbox" data-k="mirrors"> Зеркала настроены (3 шт.) <small>обзор</small></label>
+      <label class="chk"><input type="checkbox" data-k="lights"> Фары включены (ближний) <small>видимость</small></label>
+      <label class="chk"><input type="checkbox" data-k="hand"> Ручник отпущен <small>готовность</small></label>
+      <label class="chk"><input type="checkbox" data-k="gear"> Передача — нейтраль <small>старт</small></label>
+      <label class="chk"><input type="checkbox" data-k="glass"> Стекло очищено (омывайка) <small>обзор</small></label>
     </div>
-    <div id="finish">
-      <h2>🏁 Финиш!</h2>
-      <p id="finishTxt" style="font-size:15px;margin-bottom:16px"></p>
-      <div class="row">
-        <button class="cta" id="btnRestart">↻ Ещё раз</button>
-        <button class="ghost" id="btnToMenu">Меню</button>
-      </div>
+    <div class="row">
+      <button class="cta" id="btnStart">🏁 Стартую</button>
+      <button class="ghost" id="btnSkip">Быстрый старт без подготовки</button>
+      <button class="ghost" id="btnBack">← Меню</button>
+    </div>
+    <p id="prepPen" style="margin-top:10px;font-size:13px;opacity:.8"></p>
+  </div>
+
+  <div class="overlay hidden" id="finish">
+    <h2>🏁 Финиш!</h2>
+    <p id="finishTxt" style="font-size:15px;margin-bottom:16px"></p>
+    <div class="row">
+      <button class="cta" id="btnRestart">↻ Ещё раз</button>
+      <button class="ghost" id="btnToMenu">Меню</button>
     </div>
   </div>
 </div>
-<script type="module" src="/src/main.js"></script>
+<script type="module" src="/src3d/main.js"></script>
 </body>
 </html>
