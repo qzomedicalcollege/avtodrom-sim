@@ -95,7 +95,7 @@ func _box(size: Vector3, pos: Vector3, c: Color, solid := true, parent: Node = n
 	b.position = pos
 	b.material = _mat(c)
 	b.use_collision = solid
-	(get_parent() if parent == null else parent).add_child(b)
+	(self if parent == null else parent).add_child(b)
 	return b
 
 # ---------- map ----------
