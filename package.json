@@ -1,0 +1,21 @@
+{
+  "name": "avtodrom-simulator",
+  "version": "1.0.0",
+  "description": "Autodrom racing simulator for phone - Capacitor + Vite + Canvas",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "cap:init": "npx cap init",
+    "cap:add-android": "npx cap add android",
+    "cap:sync": "npx cap sync",
+    "cap:open-android": "npx cap open android"
+  },
+  "dependencies": {
+    "@capacitor/android": "^8.6.0",
+    "@capacitor/cli": "^8.6.0",
+    "@capacitor/core": "^8.6.0",
+    "vite": "^8.3.6"
+  }
+}

@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Автодром</string>
+    <string name="title_activity_main">Автодром</string>
+    <string name="package_name">com.avtodrom.sim</string>
+    <string name="custom_url_scheme">com.avtodrom.sim</string>
+</resources>

@@ -1,0 +1,27 @@
+# Deps & build
+node_modules/
+dist/
+.DS_Store
+
+# Android (Capacitor / Gradle)
+android/.gradle/
+android/app/build/
+android/app/src/main/assets/public/
+android/.idea/
+android/.cxx/
+android/local.properties
+*.iml
+.idea/
+.gradle/
+
+# Logs & env
+*.log
+npm-debug.log*
+.env
+.env.local
+local.properties
+
+# OS / editors
+Thumbs.db
+.vscode/*
+!.vscode/extensions.json
