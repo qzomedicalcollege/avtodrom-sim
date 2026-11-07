@@ -8,5 +8,11 @@ export default defineConfig({
   build: {
     outDir: 'dist',
     emptyOutDir: true,
+    rollupOptions: {
+      input: {
+        main: 'index.html',
+        game3d: 'index3d.html',
+      },
+    },
   },
 })
