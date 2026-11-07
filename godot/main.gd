@@ -217,10 +217,12 @@ func _build_ring() -> void:
 		var seg := _box(Vector3(18, 0.3, len + 0.5), Vector3((p.x + q.x) * 0.5, 0.05, (p.z + q.z) * 0.5), Color(0.23, 0.25, 0.28))
 		seg.rotation_degrees.y = yaw
 	var p0: Vector3 = ring[0]
-	_box(Vector3(24, 2.2, 2), Vector3(p0.x, 9, p0.z), Color(0.08, 0.1, 0.14))
-	_box(Vector3(2, 9, 2), Vector3(p0.x - 11, 4.5, p0.z), Color(0.13, 0.16, 0.22))
-	_box(Vector3(2, 9, 2), Vector3(p0.x + 11, 4.5, p0.z), Color(0.13, 0.16, 0.22))
-	_box(Vector3(22, 2, 0.5), Vector3(p0.x, 9, p0.z + 1.2), Color(1.0, 0.79, 0.2), false)
+	var t0: Vector3 = (ring[4] - ring[0]).normalized()
+	var g0 := p0 + t0 * 3.0
+	_box(Vector3(2, 2.2, 24), Vector3(g0.x, 9, g0.z), Color(0.08, 0.1, 0.14))
+	_box(Vector3(2, 9, 2), Vector3(g0.x, 4.5, g0.z - 11), Color(0.13, 0.16, 0.22))
+	_box(Vector3(2, 9, 2), Vector3(g0.x, 4.5, g0.z + 11), Color(0.13, 0.16, 0.22))
+	_box(Vector3(0.5, 2, 22), Vector3(g0.x + 1.2, 9, g0.z), Color(1.0, 0.79, 0.2), false)
 
 func _nearest_on_ring(pos: Vector3) -> Dictionary:
 	var best_d := 1e9
@@ -423,6 +425,15 @@ func _spawn_at_start() -> void:
 	sector = 0.0
 	expr_idx = 0
 	stopped_at.clear()
+	if cam != null:
+		_snap_camera()
+
+func _snap_camera() -> void:
+	if car == null or cam == null:
+		return
+	var fwd := -car.global_transform.basis.z
+	cam.global_position = car.global_position + (-fwd * 13.0) + Vector3(0, 6.0, 0)
+	cam.look_at(car.global_position + Vector3(0, 1.2, 0), Vector3.UP)
 
 # ---------- camera ----------
 func _build_camera() -> void:
