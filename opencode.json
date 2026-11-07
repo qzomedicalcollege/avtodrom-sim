@@ -8,7 +8,7 @@
       },
       "desktop-commander": {
         "type": "local",
-        "command": ["desktop-commander"],
+        "command": ["npx", "-y", "@wonderwhy-er/desktop-commander@latest", "--no-onboarding"],
         "timeout": {
           "startup": 60000
         }
