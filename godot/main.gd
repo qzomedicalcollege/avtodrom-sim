@@ -30,6 +30,7 @@ var hud_expr: Label
 var toast_label: Label
 var toast_timer := 0.0
 var menu_layer: CanvasLayer
+var prep_layer: CanvasLayer
 var prep_overlay: PanelContainer
 var prep_boxes: Array[CheckBox] = []
 var finish_overlay: PanelContainer
@@ -471,11 +472,11 @@ func _build_hud() -> void:
 	toast_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	toast_label.add_theme_font_size_override("font_size", 20)
 	layer.add_child(toast_label)
-	_btn(layer, "◀", Vector2(16, -180), 86, 86, _steer_set.bind(-1.0), _steer_clear.bind(-1.0))
-	_btn(layer, "▶", Vector2(112, -180), 86, 86, _steer_set.bind(1.0), _steer_clear.bind(1.0))
-	_btn(layer, "СТОП", Vector2(-190, -130), 80, 100, func() -> void: touch_brake = true, func() -> void: touch_brake = false)
-	_btn(layer, "ГО", Vector2(-100, -140), 90, 120, func() -> void: touch_gas = true, func() -> void: touch_gas = false)
-	_btn(layer, "РУЧНИК", Vector2(-100, -260), 90, 50, func() -> void: touch_hand = true, func() -> void: touch_hand = false)
+	_abtn(layer, "◀", Control.PRESET_BOTTOM_LEFT, 16, -196, 102, -110, _steer_set.bind(-1.0), _steer_clear.bind(-1.0))
+	_abtn(layer, "▶", Control.PRESET_BOTTOM_LEFT, 112, -196, 198, -110, _steer_set.bind(1.0), _steer_clear.bind(1.0))
+	_abtn(layer, "СТОП", Control.PRESET_BOTTOM_RIGHT, -190, -140, -110, -40, func() -> void: touch_brake = true, func() -> void: touch_brake = false)
+	_abtn(layer, "ГО", Control.PRESET_BOTTOM_RIGHT, -100, -160, -10, -40, func() -> void: touch_gas = true, func() -> void: touch_gas = false)
+	_abtn(layer, "РУЧНИК", Control.PRESET_BOTTOM_RIGHT, -200, -290, -110, -230, func() -> void: touch_hand = true, func() -> void: touch_hand = false)
 	var gr := HBoxContainer.new()
 	gr.set_anchors_preset(Control.PRESET_BOTTOM_LEFT)
 	gr.position = Vector2(210, -120)
@@ -486,6 +487,7 @@ func _build_hud() -> void:
 		b.custom_minimum_size = Vector2(46, 46)
 		b.pressed.connect(_set_gear.bind(g))
 		gr.add_child(b)
+	_build_gear_gate(layer)
 
 func _pill(parent: Node, text: String) -> Label:
 	var l := Label.new()
@@ -494,16 +496,18 @@ func _pill(parent: Node, text: String) -> Label:
 	parent.add_child(l)
 	return l
 
-func _btn(parent: Node, text: String, pos: Vector2, w: float, h: float, down: Callable, up: Callable) -> Button:
-	var b := Button.new()
-	b.text = text
-	b.position = pos
-	b.custom_minimum_size = Vector2(w, h)
-	b.size = Vector2(w, h)
-	b.button_down.connect(down)
-	b.button_up.connect(up)
-	parent.add_child(b)
-	return b
+func _abtn(parent: Node, text: String, preset: int, l: float, t: float, r: float, b: float, down: Callable, up: Callable) -> Button:
+	var btn := Button.new()
+	btn.text = text
+	btn.set_anchors_and_offsets_preset(preset)
+	btn.offset_left = l
+	btn.offset_top = t
+	btn.offset_right = r
+	btn.offset_bottom = b
+	btn.button_down.connect(down)
+	btn.button_up.connect(up)
+	parent.add_child(btn)
+	return btn
 
 func _steer_set(v: float) -> void:
 	touch_steer = v
@@ -516,6 +520,77 @@ func _set_gear(g: String) -> void:
 	gear = g
 	if hud_gear != null:
 		hud_gear.text = g
+	if knob != null and knob_slots.has(g):
+		_move_knob_to(g)
+
+# ---------- draggable H-gate gearbox ----------
+var gate: Control
+var knob: Button
+var knob_dragging := false
+var knob_anim := 1.0
+var knob_from := Vector2.ZERO
+var knob_to := Vector2.ZERO
+var knob_slots := {"R": Vector2(10, 0), "1": Vector2(65, 0), "3": Vector2(120, 0), "N": Vector2(65, 55), "2": Vector2(10, 110), "4": Vector2(65, 110), "5": Vector2(120, 110)}
+
+func _build_gear_gate(layer: CanvasLayer) -> void:
+	gate = Control.new()
+	gate.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_RIGHT)
+	gate.offset_left = -220
+	gate.offset_top = -350
+	gate.offset_right = -40
+	gate.offset_bottom = -200
+	layer.add_child(gate)
+	var bg := ColorRect.new()
+	bg.color = Color(0.08, 0.1, 0.14, 0.85)
+	bg.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	gate.add_child(bg)
+	var title := Label.new()
+	title.text = "КПП"
+	title.position = Vector2(70, 130)
+	title.add_theme_font_size_override("font_size", 14)
+	gate.add_child(title)
+	for g in ["R", "1", "3", "N", "2", "4", "5"]:
+		var l := Label.new()
+		l.text = g
+		l.position = knob_slots[g] + Vector2(10, 8)
+		l.add_theme_font_size_override("font_size", 18)
+		gate.add_child(l)
+	knob = Button.new()
+	knob.text = "●"
+	knob.custom_minimum_size = Vector2(44, 44)
+	knob.size = Vector2(44, 44)
+	knob.position = knob_slots["N"]
+	knob.button_down.connect(_knob_down)
+	knob.button_up.connect(_knob_up)
+	gate.add_child(knob)
+
+func _knob_down() -> void:
+	knob_dragging = true
+
+func _knob_up() -> void:
+	if not knob_dragging:
+		return
+	knob_dragging = false
+	var best := "N"
+	var bd := 1e9
+	for g in knob_slots:
+		var d := knob.position.distance_squared_to(knob_slots[g])
+		if d < bd:
+			bd = d
+			best = g
+	_set_gear(best)
+
+func _move_knob_to(g: String) -> void:
+	knob_from = knob.position
+	knob_to = knob_slots[g]
+	knob_anim = 0.0
+
+func _input(event: InputEvent) -> void:
+	if not knob_dragging or gate == null:
+		return
+	if event is InputEventMouseMotion or event is InputEventScreenDrag:
+		var lp: Vector2 = gate.get_local_mouse_position()
+		knob.position = Vector2(clampf(lp.x - 22.0, 0.0, 136.0), clampf(lp.y - 22.0, 0.0, 106.0))
 
 func _toast(s: String) -> void:
 	if toast_label != null:
@@ -551,13 +626,16 @@ func _build_menus() -> void:
 	b_exam.text = "🎓 Экзамен — полигон (13 заданий)"
 	b_exam.pressed.connect(func() -> void: _choose_mode.bind(false))
 	v.add_child(b_exam)
-	# prep overlay on menu layer
+	# prep overlay on its own layer (must stay visible after menu hides)
+	prep_layer = CanvasLayer.new()
+	prep_layer.layer = 11
+	prep_layer.visible = false
+	add_child(prep_layer)
 	prep_overlay = PanelContainer.new()
 	prep_overlay.set_anchors_preset(Control.PRESET_CENTER)
 	prep_overlay.position = Vector2(-180, -240)
 	prep_overlay.size = Vector2(360, 480)
-	prep_overlay.visible = false
-	menu_layer.add_child(prep_overlay)
+	prep_layer.add_child(prep_overlay)
 	var pv := VBoxContainer.new()
 	prep_overlay.add_child(pv)
 	var pt := Label.new()
@@ -584,13 +662,14 @@ func _build_menus() -> void:
 	finish_overlay.position = Vector2(-210, -140)
 	finish_overlay.size = Vector2(420, 280)
 	finish_overlay.visible = false
-	menu_layer.add_child(finish_overlay)
+	prep_layer.add_child(finish_overlay)
 	finish_text = Label.new()
 	finish_overlay.add_child(finish_text)
 
 func _choose_mode(is_free: bool) -> void:
 	free_mode = is_free
-	menu_layer.visible = false
+	(menu_layer.get_child(0) as Control).hide()
+	prep_layer.visible = true
 	prep_overlay.visible = true
 	_spawn_at_start()
 
@@ -603,6 +682,7 @@ func _start_race(skip: bool) -> void:
 	pen_time += float(p)
 	penalties.append({"sec": p, "label": "подготовка"})
 	prep_overlay.visible = false
+	prep_layer.visible = false
 	menu_layer.visible = false
 	_spawn_at_start()
 	_set_gear("N")
@@ -612,6 +692,7 @@ func _start_race(skip: bool) -> void:
 	sector = 0.0
 	expr_idx = 0
 	_refresh_hud()
+	_toast("Тяни кулису на 1 и жми ГО")
 
 func _refresh_hud() -> void:
 	if hud_expr != null:
@@ -623,6 +704,7 @@ func _refresh_hud() -> void:
 func _finish_race() -> void:
 	mode = "finish"
 	if finish_overlay != null:
+		prep_layer.visible = true
 		finish_overlay.visible = true
 		finish_text.text = "🏁 Финиш!\nЧистое: %s\nШтрафы: +%dс\nИтого: %s\n\n%s" % [_fmt(race_t), int(pen_time), _fmt(race_t + pen_time), _pen_lines()]
 
@@ -704,4 +786,7 @@ func _physics_process(delta: float) -> void:
 			toast_label.text = ""
 
 func _process(delta: float) -> void:
+	if knob != null and knob_anim < 1.0:
+		knob_anim = minf(1.0, knob_anim + delta / 0.12)
+		knob.position = knob_from.lerp(knob_to, knob_anim)
 	_update_camera(delta)
